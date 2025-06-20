@@ -51,21 +51,23 @@ def gongji():
         # 채널 ID 찾기
         response = client.conversations_list()
         channel_id = None
+        matched_channel = None
         for ch in response["channels"]:
-            if ch["name"] == channel_name:
+            if channel_name in ch["name"]:
                 channel_id = ch["id"]
+                matched_channel = ch["name"]
                 break
-
+        
         if not channel_id:
-            return jsonify({"text": f"❗ 채널 `#{channel_name}`을 찾을 수 없습니다."})
+            return jsonify({"text": f"❗ 입력한 채널 이름에 해당하는 채널을 찾을 수 없습니다: `{channel_name}`"})
 
         # 메시지 작성: @user_id: 메시지
         formatted_message = f"<@{user_id}>: {message}"
 
         # 메시지 전송
         client.chat_postMessage(channel=channel_id, text=formatted_message)
+        return jsonify({"text": f"✅ `#{matched_channel}` 채널에 공지를 보냈습니다."})
 
-        return jsonify({"text": f"✅ `#{channel_name}` 채널에 공지를 보냈습니다."})
 
     except SlackApiError as e:
         reason = e.response["error"]
