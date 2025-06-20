@@ -3,6 +3,10 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 import os
 
+from dotenv import load_dotenv
+load_dotenv()
+
+
 app = Flask(__name__)
 
 # 여기에 당신의 Bot Token을 넣어주세요 (보안상 .env로 관리하는 것이 좋음)
@@ -39,9 +43,11 @@ def gongji():
         return jsonify({"text": f"✅ `#{channel_name}` 채널에 공지를 보냈습니다: \"{message}\""})
 
     except SlackApiError as e:
-        return jsonify({"text": f"Slack API 오류: {e.response['error']}"})
+        reason = e.response["error"]
+        return jsonify({"text": f"Slack API 오류({reason})로 인해 */공지*에 실패했습니다."})
     except Exception as e:
         return jsonify({"text": f"서버 오류: {str(e)}"})
+
 
 if __name__ == "__main__":
     app.run(port=5000)
