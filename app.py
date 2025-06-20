@@ -13,6 +13,26 @@ app = Flask(__name__)
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")  # <-- 여기에 당신 토큰 입력
 client = WebClient(token=SLACK_BOT_TOKEN)
 
+@app.route("/gongji-debug", methods=["POST"])
+def gongji_debug():
+    text = request.form.get("text", "")
+    user_id = request.form.get("user_id", "")
+    user_name = request.form.get("user_name", "")
+    channel_id = request.form.get("channel_id", "")
+    channel_name = request.form.get("channel_name", "")
+    team_id = request.form.get("team_id", "")
+
+    print("====== [DEBUG: /gongji-debug 요청 수신] ======")
+    print(f"text: {text}")
+    print(f"user_id: {user_id}")
+    print(f"user_name: {user_name}")
+    print(f"channel_id: {channel_id}")
+    print(f"channel_name: {channel_name}")
+    print(f"team_id: {team_id}")
+    print("=============================================")
+
+    return jsonify({"text": f"✅ 디버깅 성공! text='{text}', user={user_name}"}), 200
+
 @app.route("/gongji", methods=["POST"])
 def gongji():
     text = request.form.get("text", "")
