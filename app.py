@@ -2,7 +2,8 @@ from flask import Flask, request, jsonify
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 import os
-
+import random
+import json
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -64,10 +65,12 @@ def gongji():
         # 메시지 작성: @user_id: 메시지
         formatted_message = f"<@{user_id}>: {message}"
 
-        # 메시지 전송
-        client.chat_postMessage(channel=channel_id, text=formatted_message)
-        return jsonify({"text": f"✅ `#{matched_channel}` 채널에 공지를 보냈습니다."})
+        # 메시지 작성: @user_id: 메시지
+        formatted_message = f"<@{user_id}>: {message}"
 
+        # 메시지 전송
+        client.chat_postMessage(channel=channel_id, text=message)
+        return jsonify({"text": f"✅ `#{channel_name}` 채널에 공지를 보냈습니다: \"{message}\""})
 
     except SlackApiError as e:
         reason = e.response["error"]
@@ -77,7 +80,82 @@ def gongji():
     except Exception as e:
         return jsonify({"text": f"서버 오류: {str(e)}"})
 
+def load_menu(filename):
+    with open(filename, encoding="utf-8") as f:
+        return json.load(f)
+
+lunch_items = load_menu("lunch_items.json")
+dinner_items = load_menu("dinner_items.json")
+anju_items = load_menu("anju_items.json")
+
+
+@app.route("/lunch", methods=["POST"])
+def lunch():
+    text = request.form.get("text", "").strip()  # 예: "한식" 또는 ""
+    keyword = text.lower()
+
+    # 필터링
+    if keyword:
+        filtered = [item for item in lunch_items if keyword in [t.lower() for t in item["tags"]]]
+    else:
+        filtered = lunch_items
+
+    if not filtered:
+        return jsonify({"text": f"❗ '{text}'에 해당하는 점심 메뉴가 없습니다."})
+
+    selected = random.choice(filtered)
+    return jsonify({"text": f"🍱 오늘의 점심 추천: *{selected['name']}*"})
+
+
+@app.route("/dinner", methods=["POST"])
+def dinner():
+    text = request.form.get("text", "").strip()
+    keyword = text.lower()
+
+    if keyword:
+        filtered = [item for item in dinner_items if keyword in [t.lower() for t in item["tags"]]]
+    else:
+        filtered = dinner_items
+
+    if not filtered:
+        return jsonify({"text": f"❗ '{text}'에 해당하는 저녁 메뉴가 없습니다."})
+
+    selected = random.choice(filtered)
+    return jsonify({"text": f"🍽️ 오늘의 저녁 추천: *{selected['name']}*"})
+
+
+@app.route("/anju", methods=["POST"])
+def anju():
+    text = request.form.get("text", "").strip()
+    keyword = text.lower()
+
+    if keyword:
+        filtered = [item for item in dinner_items if keyword in [t.lower() for t in item["tags"]]]
+    else:
+        filtered = dinner_items
+
+    if not filtered:
+        return jsonify({"text": f"❗ '{text}'에 해당하는 안주 메뉴가 없습니다."})
+
+    selected = random.choice(filtered)
+    return jsonify({"text": f"🍽️ 오늘의 술안주 추천: *{selected['name']}*"})
+
+@app.route("/soju", methods=["POST"])
+def joojong():
+    try:
+        alcohol_options = ["소주", "맥주", "소맥", "막걸리", "와인", "칵테일"]
+        weights = [40, 25, 15, 10, 7, 3]  # 확률 가중치 (합계 100)
+
+        selected = random.choices(alcohol_options, weights=weights, k=1)[0]
+
+        return jsonify({
+            "response_type": "in_channel",
+            "text": f"🍶 오늘의 주종 추천은: *{selected}* 입니다!"
+        })
+
+    except Exception as e:
+        return jsonify({"text": f"⚠️ 서버 오류: {str(e)}"})
+
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(port=5000)
