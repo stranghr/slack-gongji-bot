@@ -36,10 +36,11 @@ def gongji_debug():
 @app.route("/gongji", methods=["POST"])
 def gongji():
     text = request.form.get("text", "")
-    user = request.form.get("user_name", "")
+    user_id = request.form.get("user_id", "")  # 멘션용
+    user_name = request.form.get("user_name", "")  # 로그 또는 디버그용
 
     try:
-        # "채널명 메시지내용"으로 분리
+        # 채널명과 메시지 분리
         parts = text.strip().split()
         if len(parts) < 2:
             return jsonify({"text": "❗ 형식 오류: `/공지 [채널명] [메시지내용]` 형식으로 입력하세요."})
@@ -47,7 +48,7 @@ def gongji():
         channel_name = parts[0].lstrip("#")
         message = " ".join(parts[1:])
 
-        # Slack API로 채널 리스트 받아서 이름 → ID 변환
+        # 채널 ID 찾기
         response = client.conversations_list()
         channel_id = None
         for ch in response["channels"]:
@@ -58,12 +59,18 @@ def gongji():
         if not channel_id:
             return jsonify({"text": f"❗ 채널 `#{channel_name}`을 찾을 수 없습니다."})
 
+        # 메시지 작성: @user_id: 메시지
+        formatted_message = f"<@{user_id}>: {message}"
+
         # 메시지 전송
-        client.chat_postMessage(channel=channel_id, text=message)
-        return jsonify({"text": f"✅ `#{channel_name}` 채널에 공지를 보냈습니다: \"{message}\""})
+        client.chat_postMessage(channel=channel_id, text=formatted_message)
+
+        return jsonify({"text": f"✅ `#{channel_name}` 채널에 공지를 보냈습니다."})
 
     except SlackApiError as e:
         reason = e.response["error"]
+        if reason == "not_in_channel":
+            return jsonify({"text": "❗ 봇이 해당 채널에 초대되어 있지 않습니다. `/invite @공지봇`으로 초대한 후 다시 시도하세요."})
         return jsonify({"text": f"Slack API 오류({reason})로 인해 */공지*에 실패했습니다."})
     except Exception as e:
         return jsonify({"text": f"서버 오류: {str(e)}"})
